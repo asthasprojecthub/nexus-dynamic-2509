@@ -1,0 +1,886 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id              String           @id @default(uuid()) @db.Uuid
+  roleCode        String           @unique @map("role_code") @db.VarChar(50)
+  roleName        String           @map("role_name") @db.VarChar(100)
+  description     String?          @db.Text
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  users           User[]
+  userDepartments UserDepartment[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id              String           @id @default(uuid()) @db.Uuid
+  permissionKey   String           @unique @map("permission_key") @db.VarChar(120)
+  module          String           @db.VarChar(80)
+  action          String           @db.VarChar(40)
+  description     String?          @db.Text
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  userId       String     @map("user_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  isAllowed    Boolean    @default(true) @map("is_allowed")
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, permissionId])
+  @@map("user_permissions")
+}
+
+model Department {
+  id                 String               @id @default(uuid()) @db.Uuid
+  departmentCode     String               @unique @map("department_code") @db.VarChar(30)
+  departmentName     String               @map("department_name") @db.VarChar(120)
+  isActive           Boolean              @default(true) @map("is_active")
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt         DateTime?            @map("archived_at") @db.Timestamptz(6)
+  userDepartments    UserDepartment[]
+  planningTasks      PlanningTaskMaster[]
+  projectDepartments ProjectDepartment[]
+  projectPlanning    ProjectPlanning[]
+  timesheetTasks     TimesheetTask[]
+  ticketsCreated     Ticket[]             @relation("TicketCreatedDepartment")
+  ticketAssignments  TicketAssignment[]
+
+  @@map("departments")
+}
+
+model User {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  employeeNo             String                  @unique @map("employee_no") @db.VarChar(40)
+  fullName               String                  @map("full_name") @db.VarChar(150)
+  email                  String                  @unique @db.VarChar(180)
+  passwordHash           String                  @map("password_hash") @db.VarChar(255)
+  roleId                 String?                 @map("role_id") @db.Uuid
+  role                   Role?                   @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  isActive               Boolean                 @default(true) @map("is_active")
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt             DateTime?               @map("archived_at") @db.Timestamptz(6)
+  userDepartments        UserDepartment[]
+  meetingsCreated        Meeting[]               @relation("MeetingCreatedBy")
+  meetingUsers           MeetingUser[]
+  assignedTasks          ProjectPlanning[]       @relation("PlanningAssignedUser")
+  uploadedDocuments      Document[]              @relation("DocumentUploadedBy")
+  notificationsCreated   Notification[]          @relation("NotificationCreatedBy")
+  notificationRecipients NotificationRecipient[]
+  auditLogs              AuditLog[]
+  inquiryStatusChanges   InquiryStatusHistory[]  @relation("InquiryStatusChangedBy")
+  userPermissions        UserPermission[]
+  customersCreated       Customer[]              @relation("CustomerCreatedBy")
+  timesheetAssigned      TimesheetTask[]         @relation("TimesheetAssignedUser")
+  timesheetCreated       TimesheetTask[]         @relation("TimesheetCreatedBy")
+  ticketsCreated         Ticket[]                @relation("TicketCreatedBy")
+  ticketStatusChanges    TicketStatusHistory[]   @relation("TicketStatusChangedBy")
+  ticketAssignments      TicketAssignment[]      @relation("TicketAssignedUser")
+  ticketAssignmentsMade  TicketAssignment[]      @relation("TicketAssignedBy")
+  ticketWorkSessions     TicketWorkSession[]
+
+  @@map("users")
+}
+
+model InquiryStatusMaster {
+  id            String   @id @default(uuid()) @db.Uuid
+  statusCode    String   @unique @map("status_code") @db.VarChar(60)
+  statusName    String   @unique @map("status_name") @db.VarChar(100)
+  behavior      String   @default("STANDARD") @db.VarChar(40)
+  displayOrder  Int      @default(0) @map("display_order")
+  requiresPopup Boolean  @default(false) @map("requires_popup")
+  reasonOptions Json?    @map("reason_options") @db.JsonB
+  popupFields   Json?    @map("popup_fields") @db.JsonB
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("inquiry_status_masters")
+}
+
+model UserDepartment {
+  userId       String     @map("user_id") @db.Uuid
+  departmentId String     @map("department_id") @db.Uuid
+  roleId       String     @map("role_id") @db.Uuid
+  isPrimary    Boolean    @default(false) @map("is_primary")
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, departmentId, roleId])
+  @@map("user_departments")
+}
+
+model Customer {
+  id           String               @id @default(uuid()) @db.Uuid
+  customerNo   String               @unique @map("customer_no") @db.VarChar(40)
+  customerName String               @map("customer_name") @db.VarChar(200)
+  customerType String?              @map("customer_type") @db.VarChar(80)
+  city         String?              @db.VarChar(120)
+  createdById  String?              @map("created_by") @db.Uuid
+  isActive     Boolean              @default(true) @map("is_active")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt   DateTime?            @map("archived_at") @db.Timestamptz(6)
+  createdBy    User?                @relation("CustomerCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  departments  CustomerDepartment[]
+  inquiries    Inquiry[]
+  projects     Project[]
+  tickets      Ticket[]
+
+  @@index([createdById])
+  @@map("customers")
+}
+
+model CustomerDepartment {
+  id             String            @id @default(uuid()) @db.Uuid
+  customerId     String            @map("customer_id") @db.Uuid
+  departmentName String            @map("department_name") @db.VarChar(120)
+  departmentCode String?           @map("department_code") @db.VarChar(30)
+  isActive       Boolean           @default(true) @map("is_active")
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  customer       Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contacts       CustomerContact[]
+
+  @@unique([customerId, departmentName])
+  @@map("customer_departments")
+}
+
+model CustomerContact {
+  id                   String             @id @default(uuid()) @db.Uuid
+  customerDepartmentId String             @map("customer_department_id") @db.Uuid
+  contactName          String             @map("contact_name") @db.VarChar(150)
+  designation          String?            @db.VarChar(120)
+  stakeholderRole      String?            @map("stakeholder_role") @db.VarChar(120)
+  email                String?            @db.VarChar(180)
+  phone                String?            @db.VarChar(50)
+  isPrimary            Boolean            @default(false) @map("is_primary")
+  isActive             Boolean            @default(true) @map("is_active")
+  createdAt            DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  customerDepartment   CustomerDepartment @relation(fields: [customerDepartmentId], references: [id], onDelete: Cascade)
+
+  @@map("customer_contacts")
+}
+
+model FormMaster {
+  id          String        @id @default(uuid()) @db.Uuid
+  formCode    String        @unique @map("form_code") @db.VarChar(60)
+  formName    String        @map("form_name") @db.VarChar(150)
+  formType    String        @map("form_type") @db.VarChar(40)
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  versions    FormVersion[]
+  panelMaster PanelMaster?
+
+  @@map("form_masters")
+}
+
+model FormVersion {
+  id                 String              @id @default(uuid()) @db.Uuid
+  formMasterId       String              @map("form_master_id") @db.Uuid
+  versionNo          Int                 @map("version_no")
+  versionName        String?             @map("version_name") @db.VarChar(160)
+  isActive           Boolean             @default(false) @map("is_active")
+  createdById        String?             @map("created_by") @db.Uuid
+  createdAt          DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  formMaster         FormMaster          @relation(fields: [formMasterId], references: [id], onDelete: Cascade)
+  sections           FormSection[]
+  inquiryFieldValues InquiryFieldValue[]
+  inquiryPanels      InquiryPanel[]
+  projectFieldValues ProjectFieldValue[]
+  projectPanels      ProjectPanel[]
+  tickets            Ticket[]
+
+  @@unique([formMasterId, versionNo])
+  @@map("form_versions")
+}
+
+model FormSection {
+  id            String      @id @default(uuid()) @db.Uuid
+  formVersionId String      @map("form_version_id") @db.Uuid
+  sectionName   String      @map("section_name") @db.VarChar(160)
+  description   String?     @db.Text
+  displayOrder  Int         @default(0) @map("display_order")
+  isActive      Boolean     @default(true) @map("is_active")
+  formVersion   FormVersion @relation(fields: [formVersionId], references: [id], onDelete: Cascade)
+  fields        FormField[]
+
+  @@map("form_sections")
+}
+
+model FormField {
+  id                      String                   @id @default(uuid()) @db.Uuid
+  formSectionId           String                   @map("form_section_id") @db.Uuid
+  fieldKey                String                   @map("field_key") @db.VarChar(120)
+  fieldLabel              String                   @map("field_label") @db.VarChar(160)
+  fieldType               String                   @map("field_type") @db.VarChar(50)
+  isRequired              Boolean                  @default(false) @map("is_required")
+  displayOrder            Int                      @default(0) @map("display_order")
+  isActive                Boolean                  @default(true) @map("is_active")
+  configJson              Json?                    @map("config_json") @db.JsonB
+  section                 FormSection              @relation(fields: [formSectionId], references: [id], onDelete: Cascade)
+  options                 FormFieldOption[]
+  inquiryFieldValues      InquiryFieldValue[]
+  inquiryPanelFieldValues InquiryPanelFieldValue[]
+  projectFieldValues      ProjectFieldValue[]
+  projectPanelFieldValues ProjectPanelFieldValue[]
+
+  @@unique([formSectionId, fieldKey])
+  @@map("form_fields")
+}
+
+model FormFieldOption {
+  id           String    @id @default(uuid()) @db.Uuid
+  formFieldId  String    @map("form_field_id") @db.Uuid
+  optionLabel  String    @map("option_label") @db.VarChar(160)
+  optionValue  String    @map("option_value") @db.VarChar(160)
+  displayOrder Int       @default(0) @map("display_order")
+  isActive     Boolean   @default(true) @map("is_active")
+  field        FormField @relation(fields: [formFieldId], references: [id], onDelete: Cascade)
+
+  @@unique([formFieldId, optionValue])
+  @@map("form_field_options")
+}
+
+model PanelMaster {
+  id            String         @id @default(uuid()) @db.Uuid
+  panelCode     String         @unique @map("panel_code") @db.VarChar(50)
+  panelType     String         @map("panel_type") @db.VarChar(120)
+  formMasterId  String         @unique @map("form_master_id") @db.Uuid
+  isActive      Boolean        @default(true) @map("is_active")
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  formMaster    FormMaster     @relation(fields: [formMasterId], references: [id], onDelete: Restrict)
+  inquiryPanels InquiryPanel[]
+  projectPanels ProjectPanel[]
+
+  @@map("panel_masters")
+}
+
+model Inquiry {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  inquiryNo            String                 @unique @map("inquiry_no") @db.VarChar(50)
+  inquiryDate          DateTime               @default(now()) @map("inquiry_date") @db.Date
+  customerId           String                 @map("customer_id") @db.Uuid
+  projectName          String                 @map("project_name") @db.VarChar(200)
+  contactPersonId      String?                @map("contact_person_id") @db.Uuid
+  status               String                 @db.VarChar(60)
+  qty                  Int                    @default(1)
+  orderExpectedEndDate DateTime?              @map("order_expected_end_date") @db.Date
+  createdById          String?                @map("created_by") @db.Uuid
+  updatedById          String?                @map("updated_by") @db.Uuid
+  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt           DateTime?              @map("archived_at") @db.Timestamptz(6)
+  uiData               Json?                  @map("ui_data") @db.JsonB
+  customer             Customer               @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  panels               InquiryPanel[]
+  fieldValues          InquiryFieldValue[]
+  documents            InquiryDocument[]
+  projects             Project[]
+  meetings             Meeting[]
+  statusHistory        InquiryStatusHistory[]
+  tickets              Ticket[]
+
+  @@map("inquiries")
+}
+
+model InquiryPanel {
+  id            String                   @id @default(uuid()) @db.Uuid
+  inquiryId     String                   @map("inquiry_id") @db.Uuid
+  panelMasterId String                   @map("panel_master_id") @db.Uuid
+  formVersionId String                   @map("form_version_id") @db.Uuid
+  panelNo       String                   @map("panel_no") @db.VarChar(40)
+  quantity      Int                      @default(1)
+  entryMode     String?                  @map("entry_mode") @db.VarChar(20)
+  isActive      Boolean                  @default(true) @map("is_active")
+  inquiry       Inquiry                  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  panelMaster   PanelMaster              @relation(fields: [panelMasterId], references: [id], onDelete: Restrict)
+  formVersion   FormVersion              @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
+  fieldValues   InquiryPanelFieldValue[]
+  projectPanels ProjectPanel[]
+
+  @@unique([inquiryId, panelNo])
+  @@map("inquiry_panels")
+}
+
+model InquiryFieldValue {
+  id            String      @id @default(uuid()) @db.Uuid
+  inquiryId     String      @map("inquiry_id") @db.Uuid
+  formVersionId String      @map("form_version_id") @db.Uuid
+  formFieldId   String      @map("form_field_id") @db.Uuid
+  valueJson     Json?       @map("value_json") @db.JsonB
+  inquiry       Inquiry     @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  formVersion   FormVersion @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
+  formField     FormField   @relation(fields: [formFieldId], references: [id], onDelete: Restrict)
+
+  @@unique([inquiryId, formFieldId])
+  @@map("inquiry_field_values")
+}
+
+model InquiryPanelFieldValue {
+  id             String       @id @default(uuid()) @db.Uuid
+  inquiryPanelId String       @map("inquiry_panel_id") @db.Uuid
+  formFieldId    String       @map("form_field_id") @db.Uuid
+  valueJson      Json?        @map("value_json") @db.JsonB
+  inquiryPanel   InquiryPanel @relation(fields: [inquiryPanelId], references: [id], onDelete: Cascade)
+  formField      FormField    @relation(fields: [formFieldId], references: [id], onDelete: Restrict)
+
+  @@unique([inquiryPanelId, formFieldId])
+  @@map("inquiry_panel_field_values")
+}
+
+model InquiryStatusHistory {
+  id               String            @id @default(uuid()) @db.Uuid
+  inquiryId        String            @map("inquiry_id") @db.Uuid
+  fromStatus       String            @map("from_status") @db.VarChar(60)
+  toStatus         String            @map("to_status") @db.VarChar(60)
+  note             String?           @db.Text
+  reason           String?           @db.VarChar(80)
+  additionalRemark String?           @map("additional_remark") @db.Text
+  customerComment  String?           @map("customer_comment") @db.Text
+  internalNotes    String?           @map("internal_notes") @db.Text
+  revisionNumber   Int?              @map("revision_number")
+  versionLabel     String?           @map("version_label") @db.VarChar(40)
+  remarks          String?           @db.Text
+  documentId       String?           @map("document_id") @db.Uuid
+  changedById      String?           @map("changed_by") @db.Uuid
+  changedAt        DateTime          @default(now()) @map("changed_at") @db.Timestamptz(6)
+  inquiry          Inquiry           @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  document         Document?         @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  changedBy        User?             @relation("InquiryStatusChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+  statusDocuments  InquiryDocument[] @relation("InquiryStatusDocuments")
+
+  @@index([inquiryId, changedAt])
+  @@map("inquiry_status_history")
+}
+
+model Project {
+  id             String              @id @default(uuid()) @db.Uuid
+  projectNo      String              @unique @map("project_no") @db.VarChar(50)
+  inquiryId      String?             @map("inquiry_id") @db.Uuid
+  customerId     String              @map("customer_id") @db.Uuid
+  projectName    String              @map("project_name") @db.VarChar(200)
+  status         String              @db.VarChar(60)
+  progress       Int                 @default(0)
+  startDate      DateTime?           @map("start_date") @db.Date
+  targetEndDate  DateTime?           @map("target_end_date") @db.Date
+  createdById    String?             @map("created_by") @db.Uuid
+  updatedById    String?             @map("updated_by") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt     DateTime?           @map("archived_at") @db.Timestamptz(6)
+  uiData         Json?               @map("ui_data") @db.JsonB
+  inquiry        Inquiry?            @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  customer       Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  departments    ProjectDepartment[]
+  panels         ProjectPanel[]
+  fieldValues    ProjectFieldValue[]
+  planning       ProjectPlanning[]
+  documents      ProjectDocument[]
+  meetings       Meeting[]
+  timesheetTasks TimesheetTask[]
+  tickets        Ticket[]
+
+  @@map("projects")
+}
+
+model ProjectDepartment {
+  projectId    String     @map("project_id") @db.Uuid
+  departmentId String     @map("department_id") @db.Uuid
+  project      Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, departmentId])
+  @@map("project_departments")
+}
+
+model ProjectPanel {
+  id             String                   @id @default(uuid()) @db.Uuid
+  projectId      String                   @map("project_id") @db.Uuid
+  panelMasterId  String                   @map("panel_master_id") @db.Uuid
+  inquiryPanelId String?                  @map("inquiry_panel_id") @db.Uuid
+  formVersionId  String                   @map("form_version_id") @db.Uuid
+  panelNo        String                   @map("panel_no") @db.VarChar(40)
+  quantity       Int                      @default(1)
+  project        Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  panelMaster    PanelMaster              @relation(fields: [panelMasterId], references: [id], onDelete: Restrict)
+  inquiryPanel   InquiryPanel?            @relation(fields: [inquiryPanelId], references: [id], onDelete: SetNull)
+  formVersion    FormVersion              @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
+  fieldValues    ProjectPanelFieldValue[]
+  planning       ProjectPlanning[]
+
+  @@unique([projectId, panelNo])
+  @@map("project_panels")
+}
+
+model ProjectFieldValue {
+  id            String      @id @default(uuid()) @db.Uuid
+  projectId     String      @map("project_id") @db.Uuid
+  formVersionId String      @map("form_version_id") @db.Uuid
+  formFieldId   String      @map("form_field_id") @db.Uuid
+  valueJson     Json?       @map("value_json") @db.JsonB
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  formVersion   FormVersion @relation(fields: [formVersionId], references: [id], onDelete: Restrict)
+  formField     FormField   @relation(fields: [formFieldId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, formFieldId])
+  @@map("project_field_values")
+}
+
+model ProjectPanelFieldValue {
+  id             String       @id @default(uuid()) @db.Uuid
+  projectPanelId String       @map("project_panel_id") @db.Uuid
+  formFieldId    String       @map("form_field_id") @db.Uuid
+  valueJson      Json?        @map("value_json") @db.JsonB
+  projectPanel   ProjectPanel @relation(fields: [projectPanelId], references: [id], onDelete: Cascade)
+  formField      FormField    @relation(fields: [formFieldId], references: [id], onDelete: Restrict)
+
+  @@unique([projectPanelId, formFieldId])
+  @@map("project_panel_field_values")
+}
+
+model PlanningGridVersion {
+  id              String   @id @default(uuid()) @db.Uuid
+  versionNo       Int      @unique @map("version_no")
+  formName        String   @default("Project Planning Grid") @map("form_name") @db.VarChar(160)
+  statuses        Json     @db.JsonB
+  departmentTasks Json     @map("department_tasks") @db.JsonB
+  isActive        Boolean  @default(false) @map("is_active")
+  createdById     String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("planning_grid_versions")
+}
+
+model PlanningTaskMaster {
+  id           String            @id @default(uuid()) @db.Uuid
+  departmentId String            @map("department_id") @db.Uuid
+  taskName     String            @map("task_name") @db.VarChar(180)
+  displayOrder Int               @default(0) @map("display_order")
+  isActive     Boolean           @default(true) @map("is_active")
+  department   Department        @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  planning     ProjectPlanning[]
+
+  @@unique([departmentId, taskName])
+  @@map("planning_task_masters")
+}
+
+model ProjectPlanning {
+  id             String              @id @default(uuid()) @db.Uuid
+  projectId      String              @map("project_id") @db.Uuid
+  projectPanelId String?             @map("project_panel_id") @db.Uuid
+  departmentId   String              @map("department_id") @db.Uuid
+  taskMasterId   String?             @map("task_master_id") @db.Uuid
+  taskName       String              @map("task_name") @db.VarChar(180)
+  assignedUserId String?             @map("assigned_user_id") @db.Uuid
+  plannedStart   DateTime?           @map("planned_start") @db.Date
+  plannedEnd     DateTime?           @map("planned_end") @db.Date
+  actualStart    DateTime?           @map("actual_start") @db.Date
+  actualEnd      DateTime?           @map("actual_end") @db.Date
+  status         String              @db.VarChar(50)
+  progress       Int                 @default(0)
+  remarks        String?             @db.Text
+  displayOrder   Int                 @default(0) @map("display_order")
+  project        Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectPanel   ProjectPanel?       @relation(fields: [projectPanelId], references: [id], onDelete: SetNull)
+  department     Department          @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  taskMaster     PlanningTaskMaster? @relation(fields: [taskMasterId], references: [id], onDelete: SetNull)
+  assignedUser   User?               @relation("PlanningAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
+  notes          PlanningTaskNote[]
+
+  @@map("project_planning")
+}
+
+model PlanningTaskNote {
+  id                String          @id @default(uuid()) @db.Uuid
+  projectPlanningId String          @map("project_planning_id") @db.Uuid
+  note              String          @db.Text
+  createdById       String?         @map("created_by") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  planning          ProjectPlanning @relation(fields: [projectPlanningId], references: [id], onDelete: Cascade)
+
+  @@map("planning_task_notes")
+}
+
+model DocumentType {
+  id                   String         @id @default(uuid()) @db.Uuid
+  documentTypeCode     String         @unique @map("document_type_code") @db.VarChar(50)
+  documentTypeName     String         @map("document_type_name") @db.VarChar(120)
+  parentDocumentTypeId String?        @map("parent_document_type_id") @db.Uuid
+  isActive             Boolean        @default(true) @map("is_active")
+  parent               DocumentType?  @relation("DocumentTypeHierarchy", fields: [parentDocumentTypeId], references: [id], onDelete: SetNull)
+  children             DocumentType[] @relation("DocumentTypeHierarchy")
+  documents            Document[]
+
+  @@index([parentDocumentTypeId])
+  @@map("document_types")
+}
+
+model Document {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  documentTypeId       String                 @map("document_type_id") @db.Uuid
+  fileName             String                 @map("file_name") @db.VarChar(255)
+  originalFileName     String                 @map("original_file_name") @db.VarChar(255)
+  storagePath          String                 @map("storage_path") @db.VarChar(500)
+  mimeType             String?                @map("mime_type") @db.VarChar(160)
+  fileSize             BigInt?                @map("file_size")
+  versionNo            Int                    @default(1) @map("version_no")
+  checksum             String?                @db.VarChar(128)
+  isActive             Boolean                @default(true) @map("is_active")
+  uploadedById         String?                @map("uploaded_by") @db.Uuid
+  uploadedAt           DateTime               @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  documentType         DocumentType           @relation(fields: [documentTypeId], references: [id], onDelete: Restrict)
+  uploadedBy           User?                  @relation("DocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: SetNull)
+  inquiries            InquiryDocument[]
+  projects             ProjectDocument[]
+  inquiryStatusHistory InquiryStatusHistory[]
+  tickets              TicketDocument[]
+
+  @@map("documents")
+}
+
+model InquiryDocument {
+  inquiryId       String                @map("inquiry_id") @db.Uuid
+  documentId      String                @map("document_id") @db.Uuid
+  statusHistoryId String?               @map("status_history_id") @db.Uuid
+  documentRole    String?               @map("document_role") @db.VarChar(20)
+  description     String?               @db.Text
+  isActive        Boolean               @default(true) @map("is_active")
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  inquiry         Inquiry               @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  document        Document              @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  statusHistory   InquiryStatusHistory? @relation("InquiryStatusDocuments", fields: [statusHistoryId], references: [id], onDelete: SetNull)
+
+  @@id([inquiryId, documentId])
+  @@index([statusHistoryId])
+  @@map("inquiry_documents")
+}
+
+model ProjectDocument {
+  projectId   String   @map("project_id") @db.Uuid
+  documentId  String   @map("document_id") @db.Uuid
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, documentId])
+  @@map("project_documents")
+}
+
+model TicketWorkflowStatus {
+  id                     String                @id @default(uuid()) @db.Uuid
+  statusCode             String                @unique @map("status_code") @db.VarChar(60)
+  statusName             String                @unique @map("status_name") @db.VarChar(120)
+  statusCategory         String                @default("ACTIVE") @map("status_category") @db.VarChar(60)
+  sequence               Int                   @default(0)
+  color                  String                @default("#2563eb") @db.VarChar(20)
+  slaDays                Int                   @default(3) @map("sla_days")
+  popupRequired          Boolean               @default(false) @map("popup_required")
+  dynamicFields          Json?                 @map("dynamic_fields") @db.JsonB
+  allowedNextStatusCodes Json?                 @map("allowed_next_status_codes") @db.JsonB
+  allowedRoleCodes       Json?                 @map("allowed_role_codes") @db.JsonB
+  allowedDepartmentIds   Json?                 @map("allowed_department_ids") @db.JsonB
+  notificationRules      Json?                 @map("notification_rules") @db.JsonB
+  escalationRules        Json?                 @map("escalation_rules") @db.JsonB
+  isActive               Boolean               @default(true) @map("is_active")
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  currentTickets         Ticket[]              @relation("TicketCurrentStatus")
+  historyFrom            TicketStatusHistory[] @relation("TicketHistoryFromStatus")
+  historyTo              TicketStatusHistory[] @relation("TicketHistoryToStatus")
+
+  @@index([isActive, sequence])
+  @@map("ticket_workflow_statuses")
+}
+
+model Ticket {
+  id                  String                @id @default(uuid()) @db.Uuid
+  ticketNo            String                @unique @map("ticket_no") @db.VarChar(50)
+  subject             String                @db.VarChar(220)
+  customerId          String                @map("customer_id") @db.Uuid
+  ticketType          String                @map("ticket_type") @db.VarChar(60)
+  problemType         String                @map("problem_type") @db.VarChar(120)
+  manufacturer        String?               @db.VarChar(120)
+  modelNumber         String                @map("model_number") @db.VarChar(160)
+  receivedVia         String?               @map("received_via") @db.VarChar(80)
+  warrantyStatus      String?               @map("warranty_status") @db.VarChar(80)
+  supportMode         String?               @map("support_mode") @db.VarChar(80)
+  supportType         String?               @map("support_type") @db.VarChar(80)
+  complaint           String                @db.Text
+  customerComment     String?               @map("customer_comment") @db.Text
+  priority            String                @default("Medium") @db.VarChar(40)
+  inquiryId           String?               @map("inquiry_id") @db.Uuid
+  projectId           String?               @map("project_id") @db.Uuid
+  formVersionId       String?               @map("form_version_id") @db.Uuid
+  currentPhase        Int                   @default(1) @map("current_phase")
+  phase1Data          Json?                 @map("phase1_data") @db.JsonB
+  phase1SubmittedAt   DateTime?             @map("phase1_submitted_at") @db.Timestamptz(6)
+  repairLocation      String?               @map("repair_location") @db.VarChar(100)
+  repairDetails       Json?                 @map("repair_details") @db.JsonB
+  phase2Data          Json?                 @map("phase2_data") @db.JsonB
+  phase2SubmittedAt   DateTime?             @map("phase2_submitted_at") @db.Timestamptz(6)
+  rmaNo               String?               @map("rma_no") @db.VarChar(80)
+  rmaData             Json?                 @map("rma_data") @db.JsonB
+  rmaGeneratedAt      DateTime?             @map("rma_generated_at") @db.Timestamptz(6)
+  currentStatusId     String                @map("current_status_id") @db.Uuid
+  statusEnteredAt     DateTime              @default(now()) @map("status_entered_at") @db.Timestamptz(6)
+  slaDueAt            DateTime?             @map("sla_due_at") @db.Timestamptz(6)
+  isOverdue           Boolean               @default(false) @map("is_overdue")
+  overdueNotifiedAt   DateTime?             @map("overdue_notified_at") @db.Timestamptz(6)
+  createdById         String                @map("created_by_id") @db.Uuid
+  createdDepartmentId String?               @map("created_department_id") @db.Uuid
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  closedAt            DateTime?             @map("closed_at") @db.Timestamptz(6)
+  customer            Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  inquiry             Inquiry?              @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  project             Project?              @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  formVersion         FormVersion?          @relation(fields: [formVersionId], references: [id], onDelete: SetNull)
+  currentStatus       TicketWorkflowStatus  @relation("TicketCurrentStatus", fields: [currentStatusId], references: [id], onDelete: Restrict)
+  createdBy           User                  @relation("TicketCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdDepartment   Department?           @relation("TicketCreatedDepartment", fields: [createdDepartmentId], references: [id], onDelete: SetNull)
+  assignments         TicketAssignment[]
+  workSessions        TicketWorkSession[]
+  timesheetTasks      TimesheetTask[]
+  statusHistory       TicketStatusHistory[]
+  documents           TicketDocument[]
+
+  @@index([currentStatusId, isOverdue])
+  @@index([customerId, createdAt])
+  @@index([currentPhase, createdAt])
+  @@map("tickets")
+}
+
+model TicketAssignment {
+  id           String      @id @default(uuid()) @db.Uuid
+  ticketId     String      @map("ticket_id") @db.Uuid
+  departmentId String?     @map("department_id") @db.Uuid
+  userId       String?     @map("user_id") @db.Uuid
+  assignedById String      @map("assigned_by_id") @db.Uuid
+  isActive     Boolean     @default(true) @map("is_active")
+  assignedAt   DateTime    @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  ticket       Ticket      @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  user         User?       @relation("TicketAssignedUser", fields: [userId], references: [id], onDelete: SetNull)
+  assignedBy   User        @relation("TicketAssignedBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, isActive])
+  @@index([userId, isActive])
+  @@index([departmentId, isActive])
+  @@map("ticket_assignments")
+}
+
+model TicketWorkSession {
+  id             String    @id @default(uuid()) @db.Uuid
+  ticketId       String    @map("ticket_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  status         String    @default("RUNNING") @db.VarChar(20)
+  startedAt      DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  lastResumedAt  DateTime? @map("last_resumed_at") @db.Timestamptz(6)
+  pausedAt       DateTime? @map("paused_at") @db.Timestamptz(6)
+  stoppedAt      DateTime? @map("stopped_at") @db.Timestamptz(6)
+  elapsedSeconds Int       @default(0) @map("elapsed_seconds")
+  remarks        String?   @db.Text
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([ticketId, userId, startedAt])
+  @@index([userId, status])
+  @@map("ticket_work_sessions")
+}
+
+model TicketStatusHistory {
+  id              String                @id @default(uuid()) @db.Uuid
+  ticketId        String                @map("ticket_id") @db.Uuid
+  fromStatusId    String?               @map("from_status_id") @db.Uuid
+  toStatusId      String                @map("to_status_id") @db.Uuid
+  responseData    Json?                 @map("response_data") @db.JsonB
+  note            String?               @db.Text
+  slaDaysSnapshot Int                   @default(3) @map("sla_days_snapshot")
+  slaDueAt        DateTime?             @map("sla_due_at") @db.Timestamptz(6)
+  wasOverdue      Boolean               @default(false) @map("was_overdue")
+  changedById     String                @map("changed_by_id") @db.Uuid
+  changedAt       DateTime              @default(now()) @map("changed_at") @db.Timestamptz(6)
+  ticket          Ticket                @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  fromStatus      TicketWorkflowStatus? @relation("TicketHistoryFromStatus", fields: [fromStatusId], references: [id], onDelete: Restrict)
+  toStatus        TicketWorkflowStatus  @relation("TicketHistoryToStatus", fields: [toStatusId], references: [id], onDelete: Restrict)
+  changedBy       User                  @relation("TicketStatusChangedBy", fields: [changedById], references: [id], onDelete: Restrict)
+  documents       TicketDocument[]
+
+  @@index([ticketId, changedAt])
+  @@map("ticket_status_history")
+}
+
+model TicketDocument {
+  ticketId        String               @map("ticket_id") @db.Uuid
+  documentId      String               @map("document_id") @db.Uuid
+  statusHistoryId String?              @map("status_history_id") @db.Uuid
+  description     String?              @db.Text
+  documentRole    String               @default("ATTACHMENT") @map("document_role") @db.VarChar(30)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  ticket          Ticket               @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  document        Document             @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  statusHistory   TicketStatusHistory? @relation(fields: [statusHistoryId], references: [id], onDelete: SetNull)
+
+  @@id([ticketId, documentId])
+  @@index([statusHistoryId])
+  @@map("ticket_documents")
+}
+
+model Meeting {
+  id          String        @id @default(uuid()) @db.Uuid
+  inquiryId   String?       @map("inquiry_id") @db.Uuid
+  projectId   String?       @map("project_id") @db.Uuid
+  meetingType String        @map("meeting_type") @db.VarChar(40)
+  title       String        @db.VarChar(180)
+  agenda      String?       @db.Text
+  meetingDate DateTime      @map("meeting_date") @db.Date
+  startTime   DateTime      @map("start_time") @db.Time(0)
+  endTime     DateTime?     @map("end_time") @db.Time(0)
+  location    String?       @db.VarChar(200)
+  meetingLink String?       @map("meeting_link") @db.VarChar(500)
+  status      String        @default("Scheduled") @db.VarChar(40)
+  createdById String?       @map("created_by") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  inquiry     Inquiry?      @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  project     Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User?         @relation("MeetingCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  attendees   MeetingUser[]
+
+  @@map("meetings")
+}
+
+model MeetingUser {
+  meetingId  String  @map("meeting_id") @db.Uuid
+  userId     String  @map("user_id") @db.Uuid
+  isRequired Boolean @default(true) @map("is_required")
+  meeting    Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([meetingId, userId])
+  @@map("meeting_users")
+}
+
+model Notification {
+  id          String                  @id @default(uuid()) @db.Uuid
+  eventType   String                  @map("event_type") @db.VarChar(80)
+  entityType  String                  @map("entity_type") @db.VarChar(60)
+  entityId    String?                 @map("entity_id") @db.Uuid
+  title       String                  @db.VarChar(180)
+  message     String                  @db.Text
+  payload     Json?                   @db.JsonB
+  createdById String?                 @map("created_by") @db.Uuid
+  createdAt   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy   User?                   @relation("NotificationCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  recipients  NotificationRecipient[]
+
+  @@map("notifications")
+}
+
+model NotificationRecipient {
+  notificationId String       @map("notification_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  isRead         Boolean      @default(false) @map("is_read")
+  readAt         DateTime?    @map("read_at") @db.Timestamptz(6)
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([notificationId, userId])
+  @@map("notification_recipients")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  module    String   @db.VarChar(80)
+  action    String   @db.VarChar(40)
+  recordId  String?  @map("record_id") @db.Uuid
+  oldValues Json?    @map("old_values") @db.JsonB
+  newValues Json?    @map("new_values") @db.JsonB
+  source    String   @default("WEB") @db.VarChar(30)
+  ipAddress String?  @map("ip_address") @db.VarChar(64)
+  remarks   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([module, recordId])
+  @@map("audit_logs")
+}
+
+model TimesheetTask {
+  id             String      @id @default(uuid()) @db.Uuid
+  title          String      @db.VarChar(220)
+  description    String?     @db.Text
+  taskSource     String      @default("USER") @map("task_source") @db.VarChar(30)
+  sourceTaskKey  String?     @map("source_task_key") @db.VarChar(180)
+  projectId      String?     @map("project_id") @db.Uuid
+  ticketId       String?     @map("ticket_id") @db.Uuid
+  departmentId   String?     @map("department_id") @db.Uuid
+  assignedUserId String      @map("assigned_user_id") @db.Uuid
+  createdById    String?     @map("created_by_id") @db.Uuid
+  startDate      DateTime?   @map("start_date") @db.Date
+  dueDate        DateTime?   @map("due_date") @db.Date
+  actualEndDate  DateTime?   @map("actual_end_date") @db.Date
+  status         String      @default("Pending") @db.VarChar(50)
+  priority       String      @default("Medium") @db.VarChar(30)
+  taskType       String      @default("Other") @map("task_type") @db.VarChar(50)
+  estimatedHours Float       @default(0) @map("estimated_hours")
+  actualHours    Float       @default(0) @map("actual_hours")
+  startTime      String?     @map("start_time") @db.VarChar(10)
+  endTime        String?     @map("end_time") @db.VarChar(10)
+  remarks        String?     @db.Text
+  isArchived     Boolean     @default(false) @map("is_archived")
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  project        Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ticket         Ticket?     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  department     Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  assignedUser   User        @relation("TimesheetAssignedUser", fields: [assignedUserId], references: [id], onDelete: Restrict)
+  createdBy      User?       @relation("TimesheetCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([projectId, sourceTaskKey])
+  @@unique([ticketId, sourceTaskKey])
+  @@index([assignedUserId, startDate])
+  @@index([departmentId, dueDate])
+  @@index([projectId])
+  @@index([ticketId])
+  @@map("timesheet_tasks")
+}

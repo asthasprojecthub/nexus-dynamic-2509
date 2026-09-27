@@ -1,0 +1,137 @@
+{
+  "info": {
+    "name": "Nexus Dashboard API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@nexus.local\",\n  \"password\": \"Admin@123\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Bootstrap",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/bootstrap",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "bootstrap"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Customer",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/customers",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "customers"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"customer_no\": \"CUS-0100\",\n  \"customer_name\": \"Sample Customer\",\n  \"customer_type\": \"OEM\",\n  \"is_active\": true,\n  \"departments\": []\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Create Meeting",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/meetings",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "meetings"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"project_id\": \"REPLACE_UUID\",\n  \"meeting_type\": \"PROJECT\",\n  \"title\": \"Design Review\",\n  \"agenda\": \"Review project progress\",\n  \"meeting_date\": \"2026-09-01\",\n  \"start_time\": \"10:00\",\n  \"user_ids\": []\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

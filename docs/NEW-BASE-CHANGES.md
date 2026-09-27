@@ -1,0 +1,22 @@
+# Latest merged feature set
+
+- Customers are a normal workspace page; contact-person department is managed on each contact.
+- Customer list fields updated; phone is omitted from the list; mobile inputs validate exactly 10 digits.
+- User Management and person-specific Role/Permission controls are combined.
+- Audit Logs use old/new values rather than IP/source/remarks.
+- Document Type Master supports main Document Type + subtype hierarchy (BOM → Technical/Commercial, Drawing → GA/SLA, etc.).
+- Documents support editable document name and readable KB/MB size; secure API download.
+- Inquiry status behavior follows old workflow: direct update for statuses that need no extra input; popups only where required.
+- Technical/Commercial BOM status flows default the appropriate document type/subtype.
+- Inquiry notifications only: created, updated, status changed, kickoff, clickable and compact.
+- Kickoff scheduled → kickoff done → convert inquiry to project, with kickoff edit inside modal.
+- Inquiry list layout/filters/actions aligned to old project and revision badge shown externally.
+- Separate quantity groups supported for inquiry dynamic panel data.
+- Project list/filter/copy/activity behavior aligned to old project.
+- Project documents section and upload flow fixed; all planning grids remain visible.
+- Project quantity >1 supports Common/Separate and +Add Planning Grid across selected departments.
+- Planning uses fixed system schedule columns: Start Date (automatic), Timeline (Weeks), Expected End Date (automatic), Actual End Date (manual).
+- Inquiry/Project/Panel master field persistence fixed for versions, fields, subsections and options.
+- `Show field` and `Required` logic is consistent: hidden fields cannot be required.
+- Radio/checkbox layout fixed and sections use automatic stable pastel colors.
+- Development server/backend listen on LAN (`0.0.0.0`).
